@@ -1,4 +1,5 @@
 CRIU_SO			:= libcriu.so
+CRIU_A			:= libcriu.a
 UAPI_HEADERS		:= lib/c/criu.h images/rpc.proto
 PYTHON_BIN ?= python2
 
@@ -23,6 +24,10 @@ lib/c/$(CRIU_SO): lib/c/built-in.o
 	$(call msg-link, $@)
 	$(Q) $(CC) -shared $(cflags-so) -o $@ $^ $(ldflags-so) $(LDFLAGS)
 lib-c: lib/c/$(CRIU_SO)
+lib/c/$(CRIU_A): lib/c/built-in.o
+	$(call msg-link, $@)
+	$(Q) $(AR) rcs $@ $^
+lib-c: lib/c/$(CRIU_SO) lib/c/$(CRIU_A)
 .PHONY: lib-c
 
 #
@@ -40,13 +45,14 @@ clean-lib:
 	$(Q) $(MAKE) $(build)=lib/py clean
 .PHONY: clean-lib
 clean: clean-lib
-cleanup-y	+= lib/c/$(CRIU_SO) lib/c/criu.pc
+cleanup-y	+= lib/c/$(CRIU_SO) lib/c/$(CRIU_A) lib/c/criu.pc
 mrproper: clean
 
 install: lib-c lib-py crit/crit lib/c/criu.pc.in
 	$(E) "  INSTALL " lib
 	$(Q) mkdir -p $(DESTDIR)$(LIBDIR)
 	$(Q) install -m 755 lib/c/$(CRIU_SO) $(DESTDIR)$(LIBDIR)/$(CRIU_SO).$(CRIU_SO_VERSION_MAJOR).$(CRIU_SO_VERSION_MINOR)
+	$(Q) install -m 0644 lib/c/$(CRIU_A) $(DESTDIR)$(LIBDIR)/$(CRIU_A)
 	$(Q) ln -fns $(CRIU_SO).$(CRIU_SO_VERSION_MAJOR).$(CRIU_SO_VERSION_MINOR) $(DESTDIR)$(LIBDIR)/$(CRIU_SO).$(CRIU_SO_VERSION_MAJOR)
 	$(Q) ln -fns $(CRIU_SO).$(CRIU_SO_VERSION_MAJOR).$(CRIU_SO_VERSION_MINOR) $(DESTDIR)$(LIBDIR)/$(CRIU_SO)
 	$(Q) mkdir -p $(DESTDIR)$(INCLUDEDIR)/criu/
