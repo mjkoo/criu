@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <execinfo.h>
 
 #include <sys/types.h>
 #include <sys/time.h>
@@ -209,6 +210,24 @@ unsigned int log_get_loglevel(void)
 	return current_loglevel;
 }
 
+static void print_backtrace(int fd)
+{
+    int i, nptrs;
+    void *buffer[256];
+    char **strings;
+
+    nptrs = backtrace(buffer, sizeof(buffer) / sizeof(buffer[0]));
+    strings = backtrace_symbols(buffer, nptrs);
+    if (strings == NULL)
+        return;
+
+    for (i = 0; i < nptrs; i++)
+        dprintf(fd, "%s\n", strings[i]);
+    dprintf(fd, "\n");
+
+    free(strings);
+}
+
 void vprint_on_level(unsigned int loglevel, const char *format, va_list params)
 {
 	int fd, size, ret, off = 0;
@@ -235,8 +254,10 @@ void vprint_on_level(unsigned int loglevel, const char *format, va_list params)
 		off += ret;
 	}
 
-	if (loglevel == LOG_ERROR)
+	if (loglevel == LOG_ERROR) {
 		log_note_err(buffer + buf_off);
+        print_backtrace(fd);
+    }
 
 	errno =  __errno;
 }
